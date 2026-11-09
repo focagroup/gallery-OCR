@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon for Android 7.x (adaptive icons need Android 8). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M6,54a48,48 0,1 0,96 0a48,48 0,1 0,-96 0z"
+        android:fillColor="#1E5BB8" />
+    <path
+        android:pathData="M40,28h20a5,5 0,0 1,5 5v44a5,5 0,0 1,-5 5h-20a5,5 0,0 1,-5 -5v-44a5,5 0,0 1,5 -5z"
+        android:strokeWidth="4"
+        android:strokeColor="#FFFFFF"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M42,40H58M42,48H54M42,56H57"
+        android:strokeWidth="3.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M56,66a11,11 0,1 0,22 0a11,11 0,1 0,-22 0z"
+        android:strokeWidth="4.5"
+        android:strokeColor="#FFFFFF"
+        android:fillColor="#1E5BB8" />
+    <path
+        android:pathData="M75,75L84,84"
+        android:strokeWidth="6"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+</vector>

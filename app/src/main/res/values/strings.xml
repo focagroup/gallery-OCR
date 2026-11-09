@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gallery OCR</string>
+
+    <!-- Welcome / permissions -->
+    <string name="welcome_title">Search the text in your screenshots</string>
+    <string name="welcome_body">Gallery OCR reads the text in your screenshots and images and builds a search index on this device. Allow access to your images to get started.</string>
+    <string name="privacy_statement">This app has no internet permission. Android blocks every network connection for it — internet, local network and even localhost. Text recognition runs completely on your device.</string>
+    <string name="grant_access">Allow access to images</string>
+    <string name="permission_denied">Access to images was denied. Please allow \"Photos and videos\" (or \"Storage\") for Gallery OCR in the app settings.</string>
+    <string name="open_app_settings">Open app settings</string>
+    <string name="partial_access">Only some photos are accessible. Allow access to all images to index everything.</string>
+    <string name="allow_all">Allow all</string>
+
+    <!-- Home -->
+    <string name="search_hint">Search text in images</string>
+    <string name="clear">Clear</string>
+    <string name="more">More options</string>
+    <string name="folders">Folders</string>
+    <string name="collections">Collections</string>
+    <string name="settings">Settings</string>
+    <string name="all_images">All</string>
+    <string name="no_folders">No folders selected for scanning.</string>
+    <string name="choose_folders">Choose</string>
+    <string name="no_matches">No images contain this text.</string>
+    <string name="no_images">No images yet. Choose folders to scan in the menu.</string>
+    <string name="empty_collection">This collection is empty. Long-press images to add them.</string>
+    <string name="scan_running">Scanning… %1$s of %2$s</string>
+    <string name="scan_waiting">Waiting to scan… %1$s of %2$s</string>
+    <string name="scan_paused">Scanning paused · %1$s of %2$s</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="select_all">Select all</string>
+    <string name="select_none">Select none</string>
+    <string name="add_to_collection">Add to collection</string>
+    <string name="remove_from_collection">Remove from collection</string>
+    <plurals name="match_count">
+        <item quantity="one">%1$s match</item>
+        <item quantity="other">%1$s matches</item>
+    </plurals>
+
+    <!-- Viewer -->
+    <string name="back">Back</string>
+    <string name="text">Text</string>
+    <string name="share">Share</string>
+    <string name="open">Open</string>
+    <string name="open_with">Open with</string>
+    <string name="collection">Collection</string>
+    <string name="delete">Delete</string>
+    <string name="recognized_text">Recognized text</string>
+    <string name="copy_all">Copy all</string>
+    <string name="share_text">Share text</string>
+    <string name="no_text_found">No text was found in this image.</string>
+    <string name="not_scanned_yet">This image has not been scanned yet.</string>
+    <string name="no_app_found">No app found for this action.</string>
+
+    <!-- Deleting -->
+    <plurals name="delete_title">
+        <item quantity="one">Delete %1$d image?</item>
+        <item quantity="other">Delete %1$d images?</item>
+    </plurals>
+    <string name="delete_permanent_warning">The files will be deleted permanently from your device.</string>
+    <string name="delete_failed">Could not delete.</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Collections -->
+    <string name="new_collection">New collection</string>
+    <string name="name">Name</string>
+    <string name="create">Create</string>
+    <string name="done">Done</string>
+    <string name="rename">Rename</string>
+    <string name="save">Save</string>
+    <string name="no_collections">No collections yet. Create one here, or long-press images in the gallery and add them to a collection.</string>
+    <string name="delete_collection_title">Delete \"%1$s\"?</string>
+    <string name="delete_collection_body">Only the collection is deleted. The images stay on your device.</string>
+    <plurals name="add_to_collection_title">
+        <item quantity="one">Add %1$d image to…</item>
+        <item quantity="other">Add %1$d images to…</item>
+    </plurals>
+    <plurals name="image_count">
+        <item quantity="one">%1$d image</item>
+        <item quantity="other">%1$d images</item>
+    </plurals>
+
+    <!-- Folders -->
+    <string name="folders_title">Folders to scan</string>
+    <string name="folders_explanation">Only images in the chosen folders are scanned and shown. Results of folders you turn off are kept, so turning them on again is instant.</string>
+    <string name="all_folders">All folders</string>
+    <string name="all_folders_desc">Scan every image folder, including folders created later</string>
+    <string name="start_scanning">Start scanning</string>
+    <string name="no_image_folders">No image folders were found on this device.</string>
+    <plurals name="folder_count">
+        <item quantity="one">%1$d folder</item>
+        <item quantity="other">%1$d folders</item>
+    </plurals>
+
+    <!-- Settings -->
+    <string name="section_folders">Folders</string>
+    <string name="section_languages">Recognition languages</string>
+    <string name="languages_explanation">All models are built into the app. Each extra language makes scanning a bit slower.</string>
+    <string name="model_main">Latin script, Chinese and Japanese</string>
+    <string name="model_main_desc">English, German, French, Spanish, Italian, Portuguese, Polish, Turkish, … plus Chinese and Japanese</string>
+    <string name="model_cyrillic">Cyrillic</string>
+    <string name="model_cyrillic_desc">Russian, Ukrainian, Belarusian, Bulgarian, Serbian, Macedonian, …</string>
+    <string name="model_korean">Korean</string>
+    <string name="model_korean_desc">Hangul</string>
+    <string name="section_scan_mode">Scan mode</string>
+    <string name="mode_accurate">Accurate</string>
+    <string name="mode_accurate_desc">Best at finding small text. Recommended.</string>
+    <string name="mode_fast">Fast</string>
+    <string name="mode_fast_desc">About 1.5× faster. A small model reads clear text, only unclear lines get the full model. May miss very small text.</string>
+    <string name="rescan_question_title">Scan existing images again?</string>
+    <string name="rescan_question_body">The new setting applies to images scanned from now on. Images that were already scanned can be scanned again with it, which takes a while.</string>
+    <string name="rescan_all">Scan again</string>
+    <string name="only_new_images">Only new images</string>
+    <string name="section_viewer">Viewer</string>
+    <string name="highlight_matches">Highlight matches</string>
+    <string name="highlight_matches_desc">Mark the words you searched for when opening an image</string>
+    <string name="section_index">Index</string>
+    <string name="index_stats">%1$s images · %2$s scanned · %3$s waiting · %4$s failed</string>
+    <string name="retry_failed">Retry failed images</string>
+    <string name="retry_failed_desc">Scan images again that could not be read</string>
+    <string name="rescan_everything">Scan everything again</string>
+    <string name="rescan_everything_desc">Rebuild the whole text index</string>
+    <string name="rescan_everything_body">All images will be scanned again. Search keeps working with the old results in the meantime.</string>
+    <string name="section_privacy">Privacy</string>
+    <string name="offline_title">Works fully offline</string>
+    <string name="section_about">About</string>
+    <string name="version">Version %1$s</string>
+    <string name="licenses">Open-source licenses</string>
+    <string name="licenses_body">Gallery OCR is free software under the GNU General Public License v3.0.\n\nIt includes:\n\n• PaddleOCR PP-OCRv6 and PP-OCRv5 models — Apache License 2.0, © PaddlePaddle Authors\n• ONNX Runtime — MIT License, © Microsoft Corporation\n• Android Jetpack (Compose, Room, WorkManager, Core) — Apache License 2.0, © The Android Open Source Project\n• Kotlin and kotlinx.coroutines — Apache License 2.0, © JetBrains</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_scan">Scanning</string>
+    <string name="notif_channel_scan_desc">Progress while images are being scanned for text</string>
+    <string name="notif_scanning_title">Scanning images for text</string>
+    <string name="notif_scanning_progress">%1$s of %2$s</string>
+</resources>

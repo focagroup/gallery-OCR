@@ -1,0 +1,174 @@
+# Gallery OCR
+
+Search the text in your screenshots and photos — completely offline.
+
+Gallery OCR reads the text in the images of the folders you choose (for example
+`Pictures/Screenshots`), stores it in a local index and lets you find any image by the
+words in it. New screenshots are picked up automatically. It is a spiritual successor to
+Mozilla's discontinued *ScreenshotGo*, whose OCR model download no longer works.
+
+<p>
+<img src="docs/screenshots/home.png" width="180" alt="Gallery">
+<img src="docs/screenshots/viewer.png" width="180" alt="Search match highlighted">
+<img src="docs/screenshots/text.png" width="180" alt="Recognized text">
+<img src="docs/screenshots/settings.png" width="180" alt="Settings">
+<img src="docs/screenshots/notification.png" width="180" alt="Background scan">
+</p>
+
+## Privacy: it can't go online
+
+* The app has **no `INTERNET` permission**. Android then refuses to open *any* network
+  socket for it — internet, local network and even `localhost`. This is enforced by the
+  operating system, not by a promise in the code.
+* Network permissions that libraries might add are explicitly removed in
+  `AndroidManifest.xml`, and the build **fails** if one ever ends up in the final manifest
+  (`verify<Variant>NoNetwork` Gradle task).
+* The OCR models are **built into the APK**. Nothing is downloaded, ever.
+* Android backup and device-to-device transfer of the index are disabled.
+* Sharing or opening an image hands it to another app through Android's share sheet, only
+  when you tap the button. What that app does is up to that app.
+
+## Features
+
+* **Choose folders** to scan, or *All folders* (including folders created later).
+* **Fast search** across thousands of images: substring search that ignores case, accents
+  (`muller` finds `Müller`) and OCR spacing mistakes. Several words must all match;
+  `"quoted words"` must appear together.
+* **Background scanning** with a progress notification and a pause button. The first
+  scan continues when you leave the app; afterwards only new or changed images are scanned
+  each time the app opens (and while it is open).
+* **Viewer** with pinch/double-tap zoom, swiping between results and optional
+  **highlighting of the matched words** (can be turned off in settings).
+* **Recognized text** of every image: select, copy or share it.
+* **Share / open / delete** images (delete moves to the system trash on Android 11+).
+* **Collections**: put images into your own groups and filter or search inside them.
+* Long screenshots are supported (read in tiles, shown in full resolution).
+* Light and dark theme, Material You colours on Android 12+.
+
+## Languages
+
+All models ship in the APK; choose which to use in *Settings → Recognition languages*.
+
+| Option | Model | Scripts |
+|---|---|---|
+| Latin, Chinese & Japanese (default) | PP-OCRv6 small | Latin script (English, German, French, Spanish, Italian, Portuguese, Polish, Turkish, …), Chinese, Japanese, Greek |
+| Cyrillic | PP-OCRv5 Cyrillic | Russian, Ukrainian, Belarusian, Bulgarian, Serbian, … |
+| Korean | PP-OCRv5 Korean | Hangul |
+
+When several are enabled, every text line is read by the main model first; lines it cannot
+read well are re-read by the other models and the best result wins. Extra languages only
+cost time for those lines.
+
+*Scan mode* trades accuracy for speed:
+
+* **Accurate**: PP-OCRv6 small detector at 960 px, every text line read by the main model.
+* **Fast**: PP-OCRv6 tiny detector at 736 px,
+  and a *cascade* for reading: the PP-OCRv6 tiny recognizer reads every line first, and only
+  lines it is unsure about (average confidence below 0.95, any character below 0.5, or
+  tell-tale misreadings such as odd capitals inside a word) are read again by the main model.
+  On a Pixel 8 that makes recognition about 1.4× faster; on test screenshots about 2 % of words
+  came out differently, mostly in very small text. Cyrillic, Korean and Japanese lines are
+  always handed on to the right model.
+
+## Requirements and installation
+
+* Android 7.0 (API 24) or newer, phones and tablets.
+* APK download of about 53 MB (per-CPU APK) or 74 MB (universal); the models are ~57 MB.
+
+Release builds produce one APK per CPU type plus a universal one:
+
+| APK | Use for |
+|---|---|
+| `app-arm64-v8a-release.apk` | almost all phones and tablets from the last ~8 years |
+| `app-armeabi-v7a-release.apk` | older 32-bit ARM devices |
+| `app-x86_64-release.apk` / `app-x86-release.apk` | Intel/AMD devices, Chromebooks, emulators |
+| `app-universal-release.apk` | works everywhere, larger download |
+
+## How it works
+
+1. **Indexing** (`scan/Indexer.kt`): the app reads Android's MediaStore, adds new images of
+   the chosen folders to a local Room/SQLite database, re-queues changed ones and drops
+   deleted ones.
+2. **OCR** (`ocr/OcrEngine.kt`, run by `scan/OcrWorker.kt` through WorkManager as a
+   foreground job):
+   * the image is scaled so that its short side is 960 px (736 px in Fast mode); very long
+     images are decoded in overlapping tiles with `BitmapRegionDecoder`;
+   * the **DB text detector** finds text lines (probability map → connected regions →
+     boxes, `ocr/DbPostProcess.kt`);
+   * every line is cropped to 48 px height and read by the **CTC recognizer**;
+   * lines are sorted into reading order; text and box positions are stored.
+   Models run on **ONNX Runtime** (CPU, up to 4 threads).
+3. **Search** (`data/SearchText.kt`): text is normalized (lower case, accents removed for
+   European scripts, compatibility forms unified, whitespace removed) and searched with
+   SQLite `instr()`. A search over 10 000 indexed screenshots takes about 15 ms on a desktop
+   CPU, so roughly a tenth of a second on a phone.
+
+Measured on a Pixel 8 (Tensor G3, CPU only, Fast mode, phone already warm): about **1.6 s per
+screenshot** on average (roughly 0.3 s detection, 1.1 s recognition, the rest decoding). Text-heavy
+screenshots take longer, and the phone throttles under long loads. A first scan of 1 000
+screenshots takes roughly 30 minutes in the background; later scans only process new images.
+Accurate mode is slower: it uses the larger detector and the main model for every line.
+
+## Building
+
+Requirements: JDK 17 or newer and the Android SDK with platform 35 and build-tools 35.0.0
+(Android Studio installs both).
+
+```bash
+./gradlew assembleDebug      # debug APKs in app/build/outputs/apk/debug/
+./gradlew assembleRelease    # release APKs in app/build/outputs/apk/release/
+```
+
+Release APKs are only signed when a local signing configuration is present; otherwise
+they are unsigned and you can sign them with your own key.
+
+### Updating the OCR models
+
+The prepared models are committed in `app/src/main/assets/models/`, so building needs no
+model download. To update them, edit the pinned revisions/checksums in
+`tools/prepare_models.py` and run:
+
+```bash
+python3 -m venv tools/.venv
+tools/.venv/bin/pip install onnx onnxruntime numpy pyyaml
+tools/.venv/bin/python tools/prepare_models.py
+```
+
+The script downloads the official PaddleOCR ONNX exports from Hugging Face, verifies their
+SHA-256, extracts the character dictionaries and adds arg-max outputs to the recognizers
+(their full output can be ~240 MB per batch; the patched output is tiny and gives the same
+result). Sources and checksums are listed in [docs/MODELS.md](docs/MODELS.md).
+
+## Project structure
+
+```
+app/src/main/java/io/github/minuus69/galleryocr/
+  ocr/      OcrEngine (pipeline), DbPostProcess (text detection), OcrConfig (models, modes)
+  image/    decoding: tiles for OCR, strips for the viewer, EXIF rotation
+  data/     Room database, MediaStore access, settings, search normalization
+  scan/     Indexer (MediaStore sync), OcrWorker, ScanScheduler, notification
+  ui/       Compose screens: home/search, viewer, folders, collections, settings
+  util/     permissions, thumbnails, share/open intents, delete flow
+tools/prepare_models.py   reproducible model preparation
+```
+
+## Limitations
+
+* Vertical text (e.g. vertical Japanese) and handwriting are not handled well.
+* Match highlighting marks the position inside a recognized line by character position,
+  so it can be slightly off for proportional fonts.
+* Images of folders you turn off keep their results but are hidden; images on an SD card
+  that is removed keep their results until the card is back.
+* With *limited photo access* (Android 14+) only the photos you picked are indexed.
+
+## License
+
+Gallery OCR is free software: you can redistribute it and/or modify it under the terms of the
+[GNU General Public License v3.0](LICENSE).
+
+Third-party components:
+
+* PaddleOCR PP-OCRv6 / PP-OCRv5 models — Apache License 2.0, © PaddlePaddle Authors
+* ONNX Runtime — MIT License, © Microsoft Corporation
+* Android Jetpack (Compose, Room, WorkManager, Core, Activity, Lifecycle) — Apache License 2.0
+* Kotlin, kotlinx.coroutines — Apache License 2.0, © JetBrains
