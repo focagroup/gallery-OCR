@@ -55,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
@@ -297,10 +298,13 @@ private fun ZoomableImage(
                         do {
                             val event = awaitPointerEvent()
                             val pointers = event.changes.count { it.pressed }
-                            if (pointers > 1 || scale > 1.01f) {
+                            // Only fingers that were down before and still are count towards the centroid,
+                            // so it is Unspecified (NaN) on the final finger-up; using it would make the
+                            // offset NaN and the image disappear.
+                            val centroid = event.calculateCentroid(useCurrent = false)
+                            if ((pointers > 1 || scale > 1.01f) && centroid.isSpecified) {
                                 val zoom = event.calculateZoom()
                                 val pan = event.calculatePan()
-                                val centroid = event.calculateCentroid(useCurrent = false)
                                 val newScale = (scale * zoom).coerceIn(1f, 8f)
                                 // Keep the content point under the fingers in place.
                                 val newOffset = centroid + pan - center - (centroid - center - offset) * (newScale / scale)
