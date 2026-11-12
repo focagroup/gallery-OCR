@@ -43,7 +43,11 @@ object Indexer {
                 seen += m.id
                 val old = existing[m.id]
                 when {
-                    old == null -> if (settings.isInScope(m.bucketId)) inserts += m.toEntity()
+                    old == null -> {
+                        val ocr = settings.isInScope(m.bucketId)
+                        val smart = settings.isInSmartScope(m.bucketId)
+                        if (ocr || smart) inserts += m.toEntity(ocr, smart)
+                    }
                     old.dateModified != m.dateModified || old.size != m.size -> changed += m
                     old.bucketId != m.bucketId || old.volume != m.volume -> moved += m
                 }
@@ -69,12 +73,17 @@ object Indexer {
                 }
                 gone.chunked(500).forEach { dao.deleteIds(it) }
                 if (settings.allFolders.value) dao.setAllInScope() else dao.setScope(settings.folders.value.toList())
+                if (settings.smartAllFolders.value) {
+                    dao.setAllSmartScope()
+                } else {
+                    dao.setSmartScope(settings.smartFolders.value.toList())
+                }
             }
             Log.i(TAG, "sync: ${media.size} in MediaStore, +${inserts.size} ~${changed.size} -${gone.size}")
         }
     }
 
-    private fun MediaImage.toEntity() = ImageEntity(
+    private fun MediaImage.toEntity(ocr: Boolean, smart: Boolean) = ImageEntity(
         id = id,
         bucketId = bucketId,
         bucketName = bucketName,
@@ -86,9 +95,10 @@ object Indexer {
         dateModified = dateModified,
         size = size,
         orientation = orientation,
-        inScope = true,
+        inScope = ocr,
         status = OcrStatus.PENDING,
         ocrConfig = "",
         searchText = "",
+        smartScope = smart,
     )
 }

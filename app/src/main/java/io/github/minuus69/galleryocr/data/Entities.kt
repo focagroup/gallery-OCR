@@ -1,10 +1,12 @@
 package io.github.minuus69.galleryocr.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/** Values of [ImageEntity.status] (OCR) and [ImageEntity.smartStatus] (smart search). */
 object OcrStatus {
     const val PENDING = 0
     const val DONE = 1
@@ -18,6 +20,7 @@ object OcrStatus {
         Index(value = ["inScope", "dateTaken"]),
         Index(value = ["inScope", "status"]),
         Index(value = ["bucketId"]),
+        Index(value = ["smartScope", "smartStatus"]),
     ],
 )
 data class ImageEntity(
@@ -32,13 +35,41 @@ data class ImageEntity(
     val dateModified: Long,
     val size: Long,
     val orientation: Int,
-    /** True if the image lies in a folder the user chose to scan. */
+    /** True if the image lies in a folder the user chose for text search (OCR). */
     val inScope: Boolean,
     val status: Int,
     /** [io.github.minuus69.galleryocr.ocr.OcrConfig.key] used for the last scan. */
     val ocrConfig: String,
     /** Normalized recognized text without whitespace, used for substring search. */
     val searchText: String,
+    /** True if the image lies in a folder the user chose for smart search. */
+    @ColumnInfo(defaultValue = "0")
+    val smartScope: Boolean = false,
+    /** Smart search state, see [OcrStatus]. */
+    @ColumnInfo(defaultValue = "0")
+    val smartStatus: Int = OcrStatus.PENDING,
+    /** [io.github.minuus69.galleryocr.smart.SmartMode.key] used for the last analysis. */
+    @ColumnInfo(defaultValue = "")
+    val smartConfig: String = "",
+)
+
+/** CLIP image embedding for smart search; [vector] holds little-endian float32 values. */
+@Entity(
+    tableName = "embeddings",
+    foreignKeys = [
+        ForeignKey(
+            entity = ImageEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["imageId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+class EmbeddingEntity(
+    @PrimaryKey val imageId: Long,
+    /** [io.github.minuus69.galleryocr.smart.SmartMode.id] of the model that made [vector]. */
+    val model: String,
+    val vector: ByteArray,
 )
 
 /** Recognized text and boxes; kept separate so the search table stays small. */

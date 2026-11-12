@@ -73,6 +73,17 @@ object ImageDecoding {
         return FullTileSource(bitmap)
     }
 
+    /**
+     * Decodes the whole image, rotated upright, scaled down so that its shorter side is
+     * [minSide] (never scaled up). Used for the small inputs of image models.
+     */
+    fun decodeSmall(resolver: ContentResolver, uri: Uri, orientation: Int, minSide: Int): Bitmap {
+        val (rw, rh) = rawBounds(resolver, uri)
+        return decode(resolver, uri, orientation, rw, rh, software = true) { w, h ->
+            min(1f, minSide.toFloat() / min(w, h))
+        }
+    }
+
     /** Decodes an image for full-screen viewing. */
     fun decodeForViewer(resolver: ContentResolver, uri: Uri, orientation: Int): ViewerBitmap {
         val (rw, rh) = rawBounds(resolver, uri)

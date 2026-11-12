@@ -31,7 +31,8 @@ object Notifications {
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    fun scanProgress(context: Context, counts: ScanCounts): Notification {
+    /** [smart]: the scan is in its smart search phase rather than reading text. */
+    fun scanProgress(context: Context, counts: ScanCounts, smart: Boolean = false): Notification {
         val format = NumberFormat.getIntegerInstance()
         val open = PendingIntent.getActivity(
             context, 0,
@@ -45,7 +46,7 @@ object Notifications {
         )
         return NotificationCompat.Builder(context, CHANNEL_SCAN)
             .setSmallIcon(R.drawable.ic_stat_scan)
-            .setContentTitle(context.getString(R.string.notif_scanning_title))
+            .setContentTitle(context.getString(if (smart) R.string.notif_analyzing_title else R.string.notif_scanning_title))
             .setContentText(
                 context.getString(
                     R.string.notif_scanning_progress,

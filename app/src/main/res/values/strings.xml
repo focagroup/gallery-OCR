@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Gallery OCR</string>
+    <string name="app_name">Optindex</string>
 
     <!-- Welcome / permissions -->
-    <string name="welcome_title">Search the text in your screenshots</string>
-    <string name="welcome_body">Gallery OCR reads the text in your screenshots and images and builds a search index on this device. Allow access to your images to get started.</string>
-    <string name="privacy_statement">This app has no internet permission. Android blocks every network connection for it — internet, local network and even localhost. Text recognition runs completely on your device.</string>
+    <string name="welcome_title">Search your screenshots and photos</string>
+    <string name="welcome_body">Optindex reads the text in your screenshots and images and can recognize what they show, and builds a search index on this device. Allow access to your images to get started.</string>
+    <string name="privacy_statement">This app has no internet permission. Android blocks every network connection for it — internet, local network and even localhost. Text recognition and smart search run completely on your device.</string>
     <string name="grant_access">Allow access to images</string>
-    <string name="permission_denied">Access to images was denied. Please allow \"Photos and videos\" (or \"Storage\") for Gallery OCR in the app settings.</string>
+    <string name="permission_denied">Access to images was denied. Please allow \"Photos and videos\" (or \"Storage\") for Optindex in the app settings.</string>
     <string name="open_app_settings">Open app settings</string>
     <string name="partial_access">Only some photos are accessible. Allow access to all images to index everything.</string>
     <string name="allow_all">Allow all</string>
 
     <!-- Home -->
     <string name="search_hint">Search text in images</string>
+    <string name="search_hint_smart">Describe what is in the image</string>
+    <string name="search_mode_text">Text</string>
+    <string name="search_mode_smart">Smart</string>
     <string name="clear">Clear</string>
     <string name="more">More options</string>
     <string name="folders">Folders</string>
@@ -23,6 +26,9 @@
     <string name="no_folders">No folders selected for scanning.</string>
     <string name="choose_folders">Choose</string>
     <string name="no_matches">No images contain this text.</string>
+    <string name="no_smart_matches">No close matches. Try other words, or lower the strictness in Settings.</string>
+    <string name="no_smart_folders">No folders are chosen for smart search.</string>
+    <string name="no_text_folders">No folders are chosen for text search.</string>
     <string name="no_images">No images yet. Choose folders to scan in the menu.</string>
     <string name="empty_collection">This collection is empty. Long-press images to add them.</string>
     <string name="scan_running">Scanning… %1$s of %2$s</string>
@@ -84,8 +90,11 @@
 
     <!-- Folders -->
     <string name="folders_title">Folders to scan</string>
-    <string name="folders_explanation">Only images in the chosen folders are scanned and shown. Results of folders you turn off are kept, so turning them on again is instant.</string>
+    <string name="folders_explanation">Text: the text in the images is read for text search. Smart: the images are analyzed so you can search by describing them. Only images in chosen folders are scanned and shown. Results of folders you turn off are kept, so turning them on again is instant.</string>
     <string name="all_folders">All folders</string>
+    <string name="all_folders_text">All folders for text search</string>
+    <string name="all_folders_smart">All folders for smart search</string>
+    <string name="folders_summary">Text: %1$s · Smart: %2$s</string>
     <string name="all_folders_desc">Scan every image folder, including folders created later</string>
     <string name="start_scanning">Start scanning</string>
     <string name="no_image_folders">No image folders were found on this device.</string>
@@ -113,7 +122,23 @@
     <string name="rescan_question_body">The new setting applies to images scanned from now on. Images that were already scanned can be scanned again with it, which takes a while.</string>
     <string name="rescan_all">Scan again</string>
     <string name="only_new_images">Only new images</string>
-    <string name="section_viewer">Viewer</string>
+    <string name="section_smart">Smart search</string>
+    <string name="section_ocr">Text search (OCR)</string>
+    <string name="section_analyze_mode">Analyze mode</string>
+    <string name="section_more">Search and index</string>
+    <string name="smart_explanation">Find images by describing them in English, e.g. \"dog on a beach\" or \"pizza\". Works fully offline.</string>
+    <string name="smart_accurate_desc">Better matches. Recommended.</string>
+    <string name="smart_fast_desc">Smaller model, analyzes images faster. Matches are less reliable.</string>
+    <string name="strictness">Strictness</string>
+    <string name="strictness_desc">Higher shows fewer images that match better</string>
+    <string name="smart_stats">%1$s images · %2$s analyzed · %3$s waiting · %4$s failed</string>
+    <string name="retry_smart_failed_desc">Analyze images again that could not be read</string>
+    <string name="reanalyze_question_title">Analyze existing images again?</string>
+    <string name="reanalyze_question_body">The new model applies to images analyzed from now on. Images that were already analyzed can be analyzed again with it. Until then they are still found with the old model.</string>
+    <string name="reanalyze_all">Analyze again</string>
+    <string name="reanalyze_everything">Analyze everything again</string>
+    <string name="reanalyze_everything_desc">Rebuild the whole smart search index</string>
+    <string name="reanalyze_everything_body">All images will be analyzed again. Search keeps working with the old results in the meantime.</string>
     <string name="highlight_matches">Highlight matches</string>
     <string name="highlight_matches_desc">Mark the words you searched for when opening an image</string>
     <string name="section_index">Index</string>
@@ -128,11 +153,12 @@
     <string name="section_about">About</string>
     <string name="version">Version %1$s</string>
     <string name="licenses">Open-source licenses</string>
-    <string name="licenses_body">Gallery OCR is free software under the GNU General Public License v3.0.\n\nIt includes:\n\n• PaddleOCR PP-OCRv6 and PP-OCRv5 models — Apache License 2.0, © PaddlePaddle Authors\n• ONNX Runtime — MIT License, © Microsoft Corporation\n• Android Jetpack (Compose, Room, WorkManager, Core) — Apache License 2.0, © The Android Open Source Project\n• Kotlin and kotlinx.coroutines — Apache License 2.0, © JetBrains</string>
+    <string name="licenses_body">Optindex is free software under the GNU General Public License v3.0.\n\nIt includes:\n\n• PaddleOCR PP-OCRv6 and PP-OCRv5 models — Apache License 2.0, © PaddlePaddle Authors\n• TinyCLIP models — MIT License, © Microsoft Corporation\n• ONNX Runtime — MIT License, © Microsoft Corporation\n• Android Jetpack (Compose, Room, WorkManager, Core) — Apache License 2.0, © The Android Open Source Project\n• Kotlin and kotlinx.coroutines — Apache License 2.0, © JetBrains</string>
 
     <!-- Notifications -->
     <string name="notif_channel_scan">Scanning</string>
-    <string name="notif_channel_scan_desc">Progress while images are being scanned for text</string>
+    <string name="notif_channel_scan_desc">Progress while images are being scanned</string>
     <string name="notif_scanning_title">Scanning images for text</string>
+    <string name="notif_analyzing_title">Analyzing images for smart search</string>
     <string name="notif_scanning_progress">%1$s of %2$s</string>
 </resources>

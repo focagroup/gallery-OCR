@@ -18,13 +18,17 @@ import io.github.minuus69.galleryocr.data.MediaFolder
 import io.github.minuus69.galleryocr.data.MediaStoreSource
 import io.github.minuus69.galleryocr.data.OcrTextEntity
 import io.github.minuus69.galleryocr.data.ScanCounts
+import io.github.minuus69.galleryocr.data.SearchMode
 import io.github.minuus69.galleryocr.data.SearchText
 import io.github.minuus69.galleryocr.ocr.RecModel
 import io.github.minuus69.galleryocr.ocr.ScanMode
 import io.github.minuus69.galleryocr.scan.Indexer
 import io.github.minuus69.galleryocr.scan.ScanScheduler
+import io.github.minuus69.galleryocr.smart.SmartIndex
+import io.github.minuus69.galleryocr.smart.SmartMode
 import io.github.minuus69.galleryocr.util.MediaAccess
 import io.github.minuus69.galleryocr.util.Thumbnails
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -35,11 +39,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -92,12 +99,81 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val results: StateFlow<List<ImageRow>> = combine(searchTerms.debounce(150), collectionFilter) { t, c -> t to c }
+    /** Terms to highlight in the viewer; smart search has none. */
+    val highlightTerms: StateFlow<List<String>> = combine(searchTerms, settings.searchMode) { t, m ->
+        if (m == SearchMode.TEXT) t else emptyList()
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val smartIndex = SmartIndex(context, db.images())
+
+    /** Changes when embeddings are added or removed; throttled while a scan writes many. */
+    private val embeddingsVersion: Flow<String> = db.images().observeEmbeddingsVersion()
+        .conflate()
+        .transform {
+            emit(it)
+            delay(3000)
+        }
+
+    private val textResults: Flow<List<ImageRow>> = combine(searchTerms.debounce(150), collectionFilter) { t, c -> t to c }
         .flatMapLatest { (terms, collection) -> db.images().observeRows(ImageDao.buildRowsQuery(terms, collection)) }
+
+    private data class SmartQuery(val query: String, val collection: Long?, val strictness: Float, val version: String)
+
+    private val smartResults: Flow<List<ImageRow>> = combine(
+        query.map { it.trim() }.distinctUntilChanged().debounce(300),
+        collectionFilter,
+        settings.smartStrictness,
+        embeddingsVersion,
+    ) { q, c, s, v -> SmartQuery(q, c, s, v) }
+        .flatMapLatest { sq ->
+            if (sq.query.isEmpty()) {
+                db.images().observeRows(ImageDao.buildRowsQuery(emptyList(), sq.collection))
+            } else {
+                flow { emit(smartSearch(sq)) }
+            }
+        }
+
+    val results: StateFlow<List<ImageRow>> = settings.searchMode
+        .flatMapLatest { mode -> if (mode == SearchMode.TEXT) textResults else smartResults }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    private suspend fun smartSearch(sq: SmartQuery): List<ImageRow> = withContext(Dispatchers.Default) {
+        val hits = try {
+            smartIndex.search(sq.query, sq.strictness, sq.version)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            // E.g. a model that cannot be loaded; search shows no results instead of crashing.
+            android.util.Log.e("MainViewModel", "smart search failed", t)
+            emptyList()
+        }
+        val ids = hits.map { it.id }
+        val rows = HashMap<Long, ImageRow>(ids.size * 2)
+        for (chunk in ids.chunked(900)) {
+            val found = if (sq.collection != null) {
+                db.images().collectionRows(chunk, sq.collection)
+            } else {
+                db.images().smartRows(chunk)
+            }
+            found.forEach { rows[it.id] = it }
+        }
+        ids.mapNotNull { rows[it] }
+    }
+
+    fun setSearchMode(mode: SearchMode) = settings.setSearchMode(mode)
+
+    /** Text search (OCR) progress. */
     val counts: StateFlow<ScanCounts> = db.images().observeCounts()
         .stateIn(viewModelScope, SharingStarted.Eagerly, ScanCounts(0, 0, 0))
+
+    /** Smart search progress. */
+    val smartCounts: StateFlow<ScanCounts> = db.images().observeSmartCounts()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ScanCounts(0, 0, 0))
+
+    /** Both kinds of work together, for the scan status card. */
+    val scanCounts: StateFlow<ScanCounts> = combine(counts, smartCounts) { a, b ->
+        ScanCounts(a.total + b.total, a.done + b.done, a.failed + b.failed)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, ScanCounts(0, 0, 0))
 
     val scanRunning: StateFlow<Boolean> = ScanScheduler.observeRunning(context)
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -136,7 +212,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Restart the scan if new pending images show up after the worker finished.
         viewModelScope.launch {
-            combine(counts, scanRunning, settings.paused) { c, running, paused -> Triple(c, running, paused) }
+            combine(scanCounts, scanRunning, settings.paused) { c, running, paused -> Triple(c, running, paused) }
                 .collect { (c, running, paused) ->
                     val now = SystemClock.elapsedRealtime()
                     if (c.pending > 0 && !running && !paused && access != MediaAccess.NONE && now - lastAutoStart > 30_000) {
@@ -168,8 +244,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         MediaStoreSource.folders(MediaStoreSource.queryImages(context))
     }
 
-    fun saveFolders(all: Boolean, folders: Set<String>) {
-        settings.setFolders(all, folders)
+    fun saveFolders(all: Boolean, folders: Set<String>, smartAll: Boolean, smartFolders: Set<String>) {
+        settings.setFolders(all, folders, smartAll, smartFolders)
         refresh()
     }
 
@@ -196,6 +272,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun rescanAll() = viewModelScope.launch {
         db.images().rescanAll()
+        ScanScheduler.restart(context)
+    }
+
+    // ---- smart search settings
+    fun setSmartMode(mode: SmartMode, reanalyze: Boolean) = viewModelScope.launch {
+        settings.setSmartMode(mode)
+        if (reanalyze) db.images().reanalyzeOutdated(mode.key)
+        ScanScheduler.restart(context)
+    }
+
+    fun setSmartStrictness(value: Float) = settings.setSmartStrictness(value)
+
+    fun retrySmartFailed() = viewModelScope.launch {
+        db.images().retrySmartFailed()
+        ScanScheduler.ensureRunning(context)
+    }
+
+    fun reanalyzeAll() = viewModelScope.launch {
+        db.images().reanalyzeAll()
         ScanScheduler.restart(context)
     }
 
@@ -232,5 +327,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteCollection(id: Long) = viewModelScope.launch {
         if (collectionFilter.value == id) collectionFilter.value = null
         db.collections().delete(id)
+    }
+
+    override fun onCleared() {
+        smartIndex.close()
     }
 }

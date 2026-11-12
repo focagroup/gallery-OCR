@@ -1,14 +1,22 @@
 package io.github.minuus69.galleryocr.data
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [ImageEntity::class, OcrTextEntity::class, CollectionEntity::class, CollectionItemEntity::class],
-    version = 1,
+    entities = [
+        ImageEntity::class, OcrTextEntity::class, CollectionEntity::class, CollectionItemEntity::class,
+        EmbeddingEntity::class,
+    ],
+    version = 2,
     exportSchema = true,
+    autoMigrations = [
+        // 2: smart search (scope and status columns, embeddings table)
+        AutoMigration(from = 1, to = 2),
+    ],
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun images(): ImageDao

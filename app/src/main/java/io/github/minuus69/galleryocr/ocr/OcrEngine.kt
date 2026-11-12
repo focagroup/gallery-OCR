@@ -13,6 +13,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.net.Uri
 import io.github.minuus69.galleryocr.image.ImageDecoding
+import io.github.minuus69.galleryocr.util.Onnx
 import java.io.Closeable
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -77,18 +78,7 @@ class OcrEngine(context: Context, val config: OcrConfig) : Closeable {
     }
 
     init {
-        // 4 threads measured fastest on a Pixel 8 (1 big + 4 mid + 4 little cores); more threads
-        // spill onto little cores and slow every step down. (XNNPACK crashed under GrapheneOS's
-        // hardened allocator, so the default CPU provider is used.)
-        val threads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
-        fun load(asset: String): OrtSession {
-            val bytes = context.assets.open(asset).use { it.readBytes() }
-            return OrtSession.SessionOptions().use { options ->
-                options.setIntraOpNumThreads(threads)
-                options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
-                env.createSession(bytes, options)
-            }.also { sessions += it }
-        }
+        fun load(asset: String): OrtSession = Onnx.session(context, asset).also { sessions += it }
         fun chars(asset: String): Array<String> {
             val dict = context.assets.open(asset).bufferedReader(Charsets.UTF_8).use { r ->
                 r.readLines().filter { it.isNotEmpty() }

@@ -1,23 +1,31 @@
 package io.github.minuus69.galleryocr.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -26,8 +34,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -36,12 +45,14 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -68,11 +79,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -81,6 +94,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.minuus69.galleryocr.R
 import io.github.minuus69.galleryocr.data.ImageRow
 import io.github.minuus69.galleryocr.data.ScanCounts
+import io.github.minuus69.galleryocr.data.SearchMode
 import io.github.minuus69.galleryocr.util.Deleter
 import io.github.minuus69.galleryocr.util.Intents
 import io.github.minuus69.galleryocr.util.MediaAccess
@@ -92,7 +106,9 @@ fun HomeScreen(vm: MainViewModel, deleter: Deleter, onRequestFullAccess: () -> U
     val context = LocalContext.current
     val results by vm.results.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
-    val counts by vm.counts.collectAsStateWithLifecycle()
+    val counts by vm.scanCounts.collectAsStateWithLifecycle()
+    val textCounts by vm.counts.collectAsStateWithLifecycle()
+    val smartCounts by vm.smartCounts.collectAsStateWithLifecycle()
     val running by vm.scanRunning.collectAsStateWithLifecycle()
     val paused by vm.settings.paused.collectAsStateWithLifecycle()
     val collections by vm.collections.collectAsStateWithLifecycle()
@@ -101,6 +117,11 @@ fun HomeScreen(vm: MainViewModel, deleter: Deleter, onRequestFullAccess: () -> U
     val folderSetupDone by vm.settings.folderSetupDone.collectAsStateWithLifecycle()
     val allFolders by vm.settings.allFolders.collectAsStateWithLifecycle()
     val folders by vm.settings.folders.collectAsStateWithLifecycle()
+    val smartAllFolders by vm.settings.smartAllFolders.collectAsStateWithLifecycle()
+    val smartFolders by vm.settings.smartFolders.collectAsStateWithLifecycle()
+    val searchMode by vm.settings.searchMode.collectAsStateWithLifecycle()
+    val noTextFolders = !allFolders && folders.isEmpty()
+    val noSmartFolders = !smartAllFolders && smartFolders.isEmpty()
     val selecting = selection.isNotEmpty()
     var pickCollection by remember { mutableStateOf(false) }
 
@@ -168,6 +189,10 @@ fun HomeScreen(vm: MainViewModel, deleter: Deleter, onRequestFullAccess: () -> U
                 SearchRow(
                     query = query,
                     onQueryChange = { vm.query.value = it },
+                    mode = searchMode,
+                    onModeChange = { vm.setSearchMode(it) },
+                    textTotal = textCounts.total,
+                    smartTotal = smartCounts.total,
                     onFolders = { vm.navigate(Screen.Folders(onboarding = false)) },
                     onCollections = { vm.navigate(Screen.Collections) },
                     onSettings = { vm.navigate(Screen.Settings) },
@@ -187,9 +212,21 @@ fun HomeScreen(vm: MainViewModel, deleter: Deleter, onRequestFullAccess: () -> U
                     onAction = onRequestFullAccess,
                 )
             }
-            if (!folderSetupDone || (!allFolders && folders.isEmpty())) {
+            if (!folderSetupDone || (noTextFolders && noSmartFolders)) {
                 InfoCard(
                     text = stringResource(R.string.no_folders),
+                    action = stringResource(R.string.choose_folders),
+                    onAction = { vm.navigate(Screen.Folders(onboarding = false)) },
+                )
+            } else if (searchMode == SearchMode.SMART && noSmartFolders) {
+                InfoCard(
+                    text = stringResource(R.string.no_smart_folders),
+                    action = stringResource(R.string.choose_folders),
+                    onAction = { vm.navigate(Screen.Folders(onboarding = false)) },
+                )
+            } else if (searchMode == SearchMode.TEXT && noTextFolders) {
+                InfoCard(
+                    text = stringResource(R.string.no_text_folders),
                     action = stringResource(R.string.choose_folders),
                     onAction = { vm.navigate(Screen.Folders(onboarding = false)) },
                 )
@@ -227,6 +264,7 @@ fun HomeScreen(vm: MainViewModel, deleter: Deleter, onRequestFullAccess: () -> U
             if (results.isEmpty()) {
                 EmptyState(
                     text = when {
+                        query.isNotBlank() && searchMode == SearchMode.SMART -> stringResource(R.string.no_smart_matches)
                         query.isNotBlank() -> stringResource(R.string.no_matches)
                         filter != null -> stringResource(R.string.empty_collection)
                         else -> stringResource(R.string.no_images)
@@ -235,7 +273,7 @@ fun HomeScreen(vm: MainViewModel, deleter: Deleter, onRequestFullAccess: () -> U
             } else {
                 ImageGrid(
                     rows = results,
-                    resetKey = query to filter,
+                    resetKey = Triple(query, filter, searchMode),
                     selection = selection,
                     onClick = { row -> if (selecting) vm.toggleSelection(row.id) else vm.openViewer(row) },
                     onLongClick = { row -> vm.toggleSelection(row.id) },
@@ -250,34 +288,73 @@ fun HomeScreen(vm: MainViewModel, deleter: Deleter, onRequestFullAccess: () -> U
 private fun SearchRow(
     query: String,
     onQueryChange: (String) -> Unit,
+    mode: SearchMode,
+    onModeChange: (SearchMode) -> Unit,
+    textTotal: Int,
+    smartTotal: Int,
     onFolders: () -> Unit,
     onCollections: () -> Unit,
     onSettings: () -> Unit,
 ) {
     val focus = LocalFocusManager.current
     var menu by remember { mutableStateOf(false) }
-    Row(
+    Column(
         Modifier
-            .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 12.dp),
     ) {
         TextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f),
-            placeholder = { Text(stringResource(R.string.search_hint)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, bottom = 8.dp),
+            placeholder = {
+                Text(stringResource(if (mode == SearchMode.SMART) R.string.search_hint_smart else R.string.search_hint))
+            },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
+                // With text: clear it. Without: the menu (folders, collections, settings).
                 if (query.isNotEmpty()) {
                     IconButton(onClick = { onQueryChange("") }) {
                         Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
                     }
+                } else {
+                    Box {
+                        IconButton(onClick = { menu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more))
+                        }
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.folders)) },
+                                leadingIcon = { Icon(Icons.Outlined.Folder, contentDescription = null) },
+                                onClick = {
+                                    menu = false
+                                    onFolders()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.collections)) },
+                                leadingIcon = { Icon(Icons.Outlined.CollectionsBookmark, contentDescription = null) },
+                                onClick = {
+                                    menu = false
+                                    onCollections()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.settings)) },
+                                leadingIcon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
+                                onClick = {
+                                    menu = false
+                                    onSettings()
+                                },
+                            )
+                        }
+                    }
                 }
             },
             singleLine = true,
-            shape = CircleShape,
+            shape = MaterialTheme.shapes.small,
             colors = TextFieldDefaults.colors(
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
@@ -286,35 +363,89 @@ private fun SearchRow(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
         )
-        Box {
-            IconButton(onClick = { menu = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more))
-            }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.folders)) },
-                    leadingIcon = { Icon(Icons.Outlined.Folder, contentDescription = null) },
-                    onClick = {
-                        menu = false
-                        onFolders()
-                    },
+        SearchModeSwitch(
+            mode = mode,
+            onModeChange = onModeChange,
+            totals = mapOf(SearchMode.TEXT to textTotal, SearchMode.SMART to smartTotal),
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+    }
+}
+
+/**
+ * Text / Smart switch: a bar whose highlight slides to the chosen mode, with the number of
+ * images in each index. Same corner radius as the search field and the collection chips.
+ */
+@Composable
+private fun SearchModeSwitch(
+    mode: SearchMode,
+    onModeChange: (SearchMode) -> Unit,
+    totals: Map<SearchMode, Int>,
+    modifier: Modifier = Modifier,
+) {
+    val modes = SearchMode.entries
+    val colors = MaterialTheme.colorScheme
+    val format = remember { NumberFormat.getIntegerInstance() }
+    val inset = 3.dp
+    // Outer corner minus the inset, so both corners share a centre.
+    val outer = RoundedCornerShape(8.dp)
+    val inner = RoundedCornerShape(8.dp - inset)
+    BoxWithConstraints(
+        modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .clip(outer)
+            .background(colors.surfaceContainerHigh)
+            .padding(inset),
+    ) {
+        val segment = maxWidth / modes.size
+        val offset by animateDpAsState(segment * modes.indexOf(mode), label = "searchModeIndicator")
+        Box(
+            Modifier
+                .offset(x = offset)
+                .width(segment)
+                .fillMaxHeight()
+                .shadow(1.dp, inner)
+                .clip(inner)
+                .background(colors.surface),
+        )
+        Row(Modifier.fillMaxSize().selectableGroup()) {
+            for (m in modes) {
+                val selected = m == mode
+                val tint by animateColorAsState(
+                    if (selected) colors.primary else colors.onSurfaceVariant,
+                    label = "searchModeTint",
                 )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.collections)) },
-                    leadingIcon = { Icon(Icons.Outlined.CollectionsBookmark, contentDescription = null) },
-                    onClick = {
-                        menu = false
-                        onCollections()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.settings)) },
-                    leadingIcon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
-                    onClick = {
-                        menu = false
-                        onSettings()
-                    },
-                )
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        // No ripple: the sliding highlight is the feedback.
+                        .selectable(
+                            selected = selected,
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            role = Role.Tab,
+                            onClick = { onModeChange(m) },
+                        ),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        if (m == SearchMode.SMART) Icons.Outlined.AutoAwesome else Icons.Outlined.TextFields,
+                        contentDescription = null,
+                        tint = tint,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        stringResource(if (m == SearchMode.SMART) R.string.search_mode_smart else R.string.search_mode_text) +
+                            " · " + format.format(totals[m] ?: 0),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = tint,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }

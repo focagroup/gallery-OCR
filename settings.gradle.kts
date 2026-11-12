@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GalleryOCR"
+rootProject.name = "Optindex"
 include(":app")

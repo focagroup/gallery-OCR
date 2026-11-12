@@ -107,7 +107,7 @@ fun ViewerScreen(vm: MainViewModel, startId: Long, deleter: Deleter) {
     val pager = rememberPagerState(initialPage = startIndex) { items.size }
     val current = items.getOrNull(pager.currentPage.coerceAtMost(items.lastIndex)) ?: return
     val highlight by vm.settings.highlight.collectAsStateWithLifecycle()
-    val terms by vm.searchTerms.collectAsState()
+    val terms by vm.highlightTerms.collectAsState()
     val collections by vm.collections.collectAsStateWithLifecycle()
     var zoomed by remember { mutableStateOf(false) }
     var showText by remember { mutableStateOf(false) }

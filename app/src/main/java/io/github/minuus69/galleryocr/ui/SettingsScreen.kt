@@ -20,6 +20,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,11 +39,13 @@ import io.github.minuus69.galleryocr.BuildConfig
 import io.github.minuus69.galleryocr.R
 import io.github.minuus69.galleryocr.ocr.RecModel
 import io.github.minuus69.galleryocr.ocr.ScanMode
+import io.github.minuus69.galleryocr.smart.SmartMode
 import java.text.NumberFormat
 
 private sealed interface PendingChange {
     data class Models(val models: Set<RecModel>) : PendingChange
     data class Mode(val mode: ScanMode) : PendingChange
+    data class Smart(val mode: SmartMode) : PendingChange
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +57,12 @@ fun SettingsScreen(vm: MainViewModel) {
     val allFolders by vm.settings.allFolders.collectAsStateWithLifecycle()
     val folders by vm.settings.folders.collectAsStateWithLifecycle()
     val counts by vm.counts.collectAsStateWithLifecycle()
+    val smartAllFolders by vm.settings.smartAllFolders.collectAsStateWithLifecycle()
+    val smartFolders by vm.settings.smartFolders.collectAsStateWithLifecycle()
+    val smartMode by vm.settings.smartMode.collectAsStateWithLifecycle()
+    val strictness by vm.settings.smartStrictness.collectAsStateWithLifecycle()
+    val smartCounts by vm.smartCounts.collectAsStateWithLifecycle()
+    var confirmReanalyzeAll by remember { mutableStateOf(false) }
     var pending by remember { mutableStateOf<PendingChange?>(null) }
     var confirmRescanAll by remember { mutableStateOf(false) }
     var showLicenses by remember { mutableStateOf(false) }
@@ -65,14 +74,20 @@ fun SettingsScreen(vm: MainViewModel) {
             when (change) {
                 is PendingChange.Models -> vm.setModels(change.models, rescan)
                 is PendingChange.Mode -> vm.setScanMode(change.mode, rescan)
+                is PendingChange.Smart -> vm.setSmartMode(change.mode, rescan)
             }
             pending = null
         }
+        val smart = change is PendingChange.Smart
         AlertDialog(
             onDismissRequest = { pending = null },
-            title = { Text(stringResource(R.string.rescan_question_title)) },
-            text = { Text(stringResource(R.string.rescan_question_body)) },
-            confirmButton = { TextButton(onClick = { apply(true) }) { Text(stringResource(R.string.rescan_all)) } },
+            title = { Text(stringResource(if (smart) R.string.reanalyze_question_title else R.string.rescan_question_title)) },
+            text = { Text(stringResource(if (smart) R.string.reanalyze_question_body else R.string.rescan_question_body)) },
+            confirmButton = {
+                TextButton(onClick = { apply(true) }) {
+                    Text(stringResource(if (smart) R.string.reanalyze_all else R.string.rescan_all))
+                }
+            },
             dismissButton = { TextButton(onClick = { apply(false) }) { Text(stringResource(R.string.only_new_images)) } },
         )
     }
@@ -88,6 +103,20 @@ fun SettingsScreen(vm: MainViewModel) {
                 }) { Text(stringResource(R.string.rescan_all)) }
             },
             dismissButton = { TextButton(onClick = { confirmRescanAll = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+    if (confirmReanalyzeAll) {
+        AlertDialog(
+            onDismissRequest = { confirmReanalyzeAll = false },
+            title = { Text(stringResource(R.string.reanalyze_everything)) },
+            text = { Text(stringResource(R.string.reanalyze_everything_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmReanalyzeAll = false
+                    vm.reanalyzeAll()
+                }) { Text(stringResource(R.string.reanalyze_all)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmReanalyzeAll = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
     if (showLicenses) {
@@ -121,19 +150,25 @@ fun SettingsScreen(vm: MainViewModel) {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.folders_title)) },
                     supportingContent = {
-                        Text(
-                            if (allFolders) {
-                                stringResource(R.string.all_folders)
-                            } else {
-                                pluralStringResource(R.plurals.folder_count, folders.size, folders.size)
-                            },
-                        )
+                        val text = if (allFolders) {
+                            stringResource(R.string.all_folders)
+                        } else {
+                            pluralStringResource(R.plurals.folder_count, folders.size, folders.size)
+                        }
+                        val smart = if (smartAllFolders) {
+                            stringResource(R.string.all_folders)
+                        } else {
+                            pluralStringResource(R.plurals.folder_count, smartFolders.size, smartFolders.size)
+                        }
+                        Text(stringResource(R.string.folders_summary, text, smart))
                     },
                     modifier = Modifier.clickable { vm.navigate(Screen.Folders(onboarding = false)) },
                 )
             }
 
-            item { SectionHeader(stringResource(R.string.section_languages)) }
+            // ---- Text search (OCR)
+            item { SectionHeader(stringResource(R.string.section_ocr)) }
+            item { SubHeader(stringResource(R.string.section_languages)) }
             item {
                 Text(
                     stringResource(R.string.languages_explanation),
@@ -160,8 +195,7 @@ fun SettingsScreen(vm: MainViewModel) {
                     )
                 }
             }
-
-            item { SectionHeader(stringResource(R.string.section_scan_mode)) }
+            item { SubHeader(stringResource(R.string.section_scan_mode)) }
             for ((m, title, desc) in listOf(
                 Triple(ScanMode.ACCURATE, R.string.mode_accurate, R.string.mode_accurate_desc),
                 Triple(ScanMode.FAST, R.string.mode_fast, R.string.mode_fast_desc),
@@ -176,8 +210,7 @@ fun SettingsScreen(vm: MainViewModel) {
                     )
                 }
             }
-
-            item { SectionHeader(stringResource(R.string.section_viewer)) }
+            item { SubHeader(stringResource(R.string.section_more)) }
             item {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.highlight_matches)) },
@@ -186,21 +219,22 @@ fun SettingsScreen(vm: MainViewModel) {
                     modifier = Modifier.clickable { vm.settings.setHighlight(!highlight) },
                 )
             }
-
-            item { SectionHeader(stringResource(R.string.section_index)) }
             item {
                 ListItem(
-                    headlineContent = {
-                        Text(
-                            stringResource(
-                                R.string.index_stats,
-                                format.format(counts.total),
-                                format.format(counts.done),
-                                format.format(counts.pending),
-                                format.format(counts.failed),
-                            ),
-                        )
-                    },
+                    headlineContent = { Text(stringResource(R.string.rescan_everything)) },
+                    supportingContent = { Text(stringResource(R.string.rescan_everything_desc)) },
+                    modifier = Modifier.clickable { confirmRescanAll = true },
+                )
+            }
+            item {
+                IndexItem(
+                    stringResource(
+                        R.string.index_stats,
+                        format.format(counts.total),
+                        format.format(counts.done),
+                        format.format(counts.pending),
+                        format.format(counts.failed),
+                    ),
                 )
             }
             if (counts.failed > 0) {
@@ -212,12 +246,76 @@ fun SettingsScreen(vm: MainViewModel) {
                     )
                 }
             }
+
+            // ---- Smart search
+            item { SectionHeader(stringResource(R.string.section_smart)) }
+            item {
+                Text(
+                    stringResource(R.string.smart_explanation),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+            item { SubHeader(stringResource(R.string.section_analyze_mode)) }
+            for ((m, title, desc) in listOf(
+                Triple(SmartMode.ACCURATE, R.string.mode_accurate, R.string.smart_accurate_desc),
+                Triple(SmartMode.FAST, R.string.mode_fast, R.string.smart_fast_desc),
+            )) {
+                item(key = "smart-" + m.id) {
+                    val select = { if (smartMode != m) pending = PendingChange.Smart(m) }
+                    ListItem(
+                        headlineContent = { Text(stringResource(title)) },
+                        supportingContent = { Text(stringResource(desc)) },
+                        leadingContent = { RadioButton(selected = smartMode == m, onClick = { select() }) },
+                        modifier = Modifier.clickable { select() },
+                    )
+                }
+            }
+            item { SubHeader(stringResource(R.string.section_more)) }
+            item {
+                var value by remember(strictness) { mutableStateOf(strictness) }
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.strictness)) },
+                    supportingContent = {
+                        Column {
+                            Text(stringResource(R.string.strictness_desc))
+                            Slider(
+                                value = value,
+                                onValueChange = { value = it },
+                                onValueChangeFinished = { vm.setSmartStrictness(value) },
+                                steps = 9,
+                            )
+                        }
+                    },
+                )
+            }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.rescan_everything)) },
-                    supportingContent = { Text(stringResource(R.string.rescan_everything_desc)) },
-                    modifier = Modifier.clickable { confirmRescanAll = true },
+                    headlineContent = { Text(stringResource(R.string.reanalyze_everything)) },
+                    supportingContent = { Text(stringResource(R.string.reanalyze_everything_desc)) },
+                    modifier = Modifier.clickable { confirmReanalyzeAll = true },
                 )
+            }
+            item {
+                IndexItem(
+                    stringResource(
+                        R.string.smart_stats,
+                        format.format(smartCounts.total),
+                        format.format(smartCounts.done),
+                        format.format(smartCounts.pending),
+                        format.format(smartCounts.failed),
+                    ),
+                )
+            }
+            if (smartCounts.failed > 0) {
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.retry_failed)) },
+                        supportingContent = { Text(stringResource(R.string.retry_smart_failed_desc)) },
+                        modifier = Modifier.clickable { vm.retrySmartFailed() },
+                    )
+                }
             }
 
             item { SectionHeader(stringResource(R.string.section_privacy)) }
@@ -244,6 +342,26 @@ fun SettingsScreen(vm: MainViewModel) {
             }
         }
     }
+}
+
+/** Small heading for a group of settings inside a section. */
+@Composable
+private fun SubHeader(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+    )
+}
+
+/** Progress of one index: images, done, waiting, failed. */
+@Composable
+private fun IndexItem(stats: String) {
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.section_index)) },
+        supportingContent = { Text(stats) },
+    )
 }
 
 @Composable
