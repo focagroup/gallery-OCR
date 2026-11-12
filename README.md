@@ -1,6 +1,6 @@
 # Optindex
 
-Search the text in your screenshots and photos, or describe what is in them — completely offline.
+Search the text in your screenshots and photos, or describe what is in them, without internet at all.
 
 Optindex reads the text in the images of the folders you choose (for example
 `Pictures/Screenshots`), stores it in a local index and lets you find any image by the
@@ -8,23 +8,14 @@ words in it. With **smart search** you can also find images by describing them (
 beach", "receipt", "map"). New screenshots are picked up automatically. It is a spiritual successor to
 Mozilla's discontinued *ScreenshotGo*, whose OCR model download no longer works.
 
-<p>
-<img src="docs/screenshots/home.png" width="180" alt="Gallery">
-<img src="docs/screenshots/viewer.png" width="180" alt="Search match highlighted">
-<img src="docs/screenshots/text.png" width="180" alt="Recognized text">
-<img src="docs/screenshots/settings.png" width="180" alt="Settings">
-<img src="docs/screenshots/notification.png" width="180" alt="Background scan">
-</p>
-
-## Privacy: it can't go online
+## Privacy
 
 * The app has **no `INTERNET` permission**. Android then refuses to open *any* network
-  socket for it — internet, local network and even `localhost`. This is enforced by the
-  operating system, not by a promise in the code.
+  socket for it. So no internet, local network and even `localhost`.
 * Network permissions that libraries might add are explicitly removed in
   `AndroidManifest.xml`, and the build **fails** if one ever ends up in the final manifest
   (`verify<Variant>NoNetwork` Gradle task).
-* The OCR and smart search models are **built into the APK**. Nothing is downloaded, ever.
+* The OCR and smart search models are **built into the APK**. No need to download anything.
 * Android backup and device-to-device transfer of the index are disabled.
 * Sharing or opening an image hands it to another app through Android's share sheet, only
   when you tap the button. What that app does is up to that app.
