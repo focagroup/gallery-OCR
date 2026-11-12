@@ -153,7 +153,7 @@
     <string name="section_about">About</string>
     <string name="version">Version %1$s</string>
     <string name="licenses">Open-source licenses</string>
-    <string name="licenses_body">Optindex is free software under the GNU General Public License v3.0.\n\nIt includes:\n\n• PaddleOCR PP-OCRv6 and PP-OCRv5 models — Apache License 2.0, © PaddlePaddle Authors\n• TinyCLIP models — MIT License, © Microsoft Corporation\n• ONNX Runtime — MIT License, © Microsoft Corporation\n• Android Jetpack (Compose, Room, WorkManager, Core) — Apache License 2.0, © The Android Open Source Project\n• Kotlin and kotlinx.coroutines — Apache License 2.0, © JetBrains</string>
+    <string name="licenses_body">Optindex is free software under the GNU Affero General Public License v3.0.\n\nIt includes:\n\n• PaddleOCR PP-OCRv6 and PP-OCRv5 models — Apache License 2.0, © PaddlePaddle Authors\n• TinyCLIP models — MIT License, © Microsoft Corporation\n• ONNX Runtime — MIT License, © Microsoft Corporation\n• Android Jetpack (Compose, Room, WorkManager, Core) — Apache License 2.0, © The Android Open Source Project\n• Kotlin and kotlinx.coroutines — Apache License 2.0, © JetBrains</string>
 
     <!-- Notifications -->
     <string name="notif_channel_scan">Scanning</string>

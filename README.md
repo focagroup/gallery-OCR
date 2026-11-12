@@ -214,7 +214,7 @@ tools/prepare_clip_models.py   reproducible smart search model preparation
 ## License
 
 Optindex is free software: you can redistribute it and/or modify it under the terms of the
-[GNU General Public License v3.0](LICENSE).
+[GNU Affero General Public License v3.0](LICENSE).
 
 Third-party components:
 
