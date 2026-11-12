@@ -121,7 +121,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
     private val textResults: Flow<List<ImageRow>> = combine(searchTerms.debounce(150), collectionFilter) { t, c -> t to c }
-        .flatMapLatest { (terms, collection) -> db.images().observeRows(ImageDao.buildRowsQuery(terms, collection)) }
+        .flatMapLatest { (terms, collection) -> db.images().observeRows(ImageDao.buildRowsQuery(terms, collection, SearchMode.TEXT)) }
 
     private data class SmartQuery(val query: String, val collection: Long?, val strictness: Float, val version: String)
 
@@ -133,7 +133,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) { q, c, s, v -> SmartQuery(q, c, s, v) }
         .flatMapLatest { sq ->
             if (sq.query.isEmpty()) {
-                db.images().observeRows(ImageDao.buildRowsQuery(emptyList(), sq.collection))
+                db.images().observeRows(ImageDao.buildRowsQuery(emptyList(), sq.collection, SearchMode.SMART))
             } else {
                 flow { emit(smartSearch(sq)) }
             }

@@ -168,10 +168,11 @@ interface ImageDao {
 
         /**
          * Builds the gallery/text search query. Every search term must occur as a substring of
-         * the normalized text; inside a collection, folder selection is ignored. Without terms
-         * the gallery shows images from text and smart search folders.
+         * the normalized text; inside a collection, folder selection is ignored. Otherwise only
+         * images from the folders chosen for [mode] are shown (text search folders or smart
+         * search folders), so the two tabs stay separate.
          */
-        fun buildRowsQuery(terms: List<String>, collectionId: Long?): SupportSQLiteQuery {
+        fun buildRowsQuery(terms: List<String>, collectionId: Long?, mode: SearchMode): SupportSQLiteQuery {
             val sql = StringBuilder(
                 "SELECT id, dateTaken, mimeType, orientation, bucketName, displayName, status FROM images WHERE ",
             )
@@ -179,8 +180,8 @@ interface ImageDao {
             if (collectionId != null) {
                 sql.append("id IN (SELECT imageId FROM collection_items WHERE collectionId = ?)")
                 args += collectionId
-            } else if (terms.isEmpty()) {
-                sql.append("(inScope = 1 OR smartScope = 1)")
+            } else if (mode == SearchMode.SMART) {
+                sql.append("smartScope = 1")
             } else {
                 sql.append("inScope = 1")
             }
