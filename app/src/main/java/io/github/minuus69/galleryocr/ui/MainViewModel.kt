@@ -2,6 +2,7 @@ package io.github.minuus69.galleryocr.ui
 
 import android.app.Application
 import android.os.SystemClock
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +76,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun back() {
         if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
     }
+
+    // Home grid scroll position lives here so it survives opening the viewer and coming back
+    // (the home screen leaves composition while another screen is shown).
+    val homeGridState = LazyGridState()
+    var homeGridKey: Any? = null
 
     // ---- permission
     var access by mutableStateOf(MediaAccess.NONE)

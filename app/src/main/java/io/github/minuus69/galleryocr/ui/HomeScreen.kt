@@ -32,7 +32,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.selectable
@@ -273,7 +273,10 @@ fun HomeScreen(vm: MainViewModel, deleter: Deleter, onRequestFullAccess: () -> U
             } else {
                 ImageGrid(
                     rows = results,
+                    state = vm.homeGridState,
                     resetKey = Triple(query, filter, searchMode),
+                    lastResetKey = vm.homeGridKey,
+                    onResetKeyApplied = { vm.homeGridKey = it },
                     selection = selection,
                     onClick = { row -> if (selecting) vm.toggleSelection(row.id) else vm.openViewer(row) },
                     onLongClick = { row -> vm.toggleSelection(row.id) },
@@ -528,13 +531,21 @@ private fun EmptyState(text: String) {
 @Composable
 private fun ImageGrid(
     rows: List<ImageRow>,
+    state: LazyGridState,
     resetKey: Any,
+    lastResetKey: Any?,
+    onResetKeyApplied: (Any) -> Unit,
     selection: Set<Long>,
     onClick: (ImageRow) -> Unit,
     onLongClick: (ImageRow) -> Unit,
 ) {
-    val state = rememberLazyGridState()
-    LaunchedEffect(resetKey) { state.scrollToItem(0) }
+    // Jump to the top only when the search/filter really changed, not when returning from the viewer.
+    LaunchedEffect(resetKey) {
+        if (resetKey != lastResetKey) {
+            if (lastResetKey != null) state.scrollToItem(0)
+            onResetKeyApplied(resetKey)
+        }
+    }
     // No item keys on purpose: the grid then keeps its position by index, so newly taken
     // screenshots appear at the top instead of pushing the view down.
     LazyVerticalGrid(
